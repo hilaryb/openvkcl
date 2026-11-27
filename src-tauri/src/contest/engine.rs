@@ -79,10 +79,14 @@ struct Tally {
     blocks: BTreeMap<i64, (f64, HashSet<String>)>,
 }
 
-fn group_of(def: &ContestDef, band: &str) -> usize {
+fn group_of(def: &ContestDef, band: &str, mode: &str) -> usize {
+    let group = def.mode_group(mode);
     def.score_groups
         .iter()
-        .position(|g| g.bands.iter().any(|b| b == band))
+        .position(|g| {
+            g.bands.iter().any(|b| b == band)
+                && (g.modes.is_empty() || g.modes.iter().any(|m| m == mode || *m == group))
+        })
         .unwrap_or(0)
 }
 
@@ -126,11 +130,12 @@ fn exchange_warning(def: &ContestDef, setup: &LogSetup, q: &Qso) -> Option<Strin
         }
     }
     if def.has_field(ExchField::Locator) && !def.generic {
-        if q.rcvd_locator.len() < 6 || !geo::is_valid(&q.rcvd_locator) {
-            problems.push("received locator must be at least 6 characters".to_string());
+        let n = def.locator_chars;
+        if q.rcvd_locator.len() < n || !geo::is_valid(&q.rcvd_locator) {
+            problems.push(format!("received locator must be at least {n} characters"));
         }
-        if q.sent_locator.len() < 6 || !geo::is_valid(&q.sent_locator) {
-            problems.push("own locator must be at least 6 characters".to_string());
+        if q.sent_locator.len() < n || !geo::is_valid(&q.sent_locator) {
+            problems.push(format!("own locator must be at least {n} characters"));
         }
     }
     if !def.in_session(setup.start, q.time) {
@@ -246,8 +251,9 @@ fn basic_points(def: &ContestDef, setup: &LogSetup, q: &Qso) -> (f64, Option<f64
             taper_divisor,
             taper_bands,
             max_locator_chars,
+            min_points,
         } => {
-            if q.rcvd_locator.len() < 6 || q.sent_locator.len() < 6 {
+            if q.rcvd_locator.len() < def.locator_chars || q.sent_locator.len() < def.locator_chars {
                 return (0.0, None);
             }
             let Some(d) = geo::distance_km_limited(&q.sent_locator, &q.rcvd_locator, *max_locator_chars)
@@ -269,7 +275,7 @@ fn basic_points(def: &ContestDef, setup: &LogSetup, q: &Qso) -> (f64, Option<f64
                 }
                 km * band_factor.get(&q.band).copied().unwrap_or(0.0)
             };
-            let basic = def.scoring.round.apply(basic);
+            let basic = def.scoring.round.apply(basic).max(*min_points);
             let mode_factor = mode
                 .get(&q.mode)
                 .or_else(|| mode.get(&def.mode_group(&q.mode)))
@@ -386,6 +392,9 @@ pub fn evaluate(def: &ContestDef, setup: &LogSetup, qsos: &[Qso]) -> Evaluation 
     let mut invalid_count = 0;
     let mut by_band: BTreeMap<String, u32> = BTreeMap::new();
     let bonuses = applied_bonuses(def, setup);
+    // Home stations score every contact; `count_only` limits the others.
+    let home = &def.scoring.count_only_home;
+    let scores_all = !home.is_empty() && callsign::matches_any(&setup.station.callsign, home);
     let rover_wait = def.rover.as_ref().filter(|_| def.is_rover(setup)).map(|r| r.move_minutes);
     // The rover's last contact: when, and from which area.
     let mut last_from: Option<(DateTime<Utc>, String)> = None;
@@ -460,11 +469,11 @@ pub fn evaluate(def: &ContestDef, setup: &LogSetup, qsos: &[Qso]) -> Evaluation 
         }
         *by_band.entry(q.band.clone()).or_default() += 1;
 
-        let tally = &mut tallies[group_of(def, &q.band)];
+        let tally = &mut tallies[group_of(def, &q.band, &q.mode)];
         tally.qsos += 1;
         let (p, dist) = points(def, setup, &bonuses, q);
         r.distance_km = dist;
-        if callsign::matches_any(&q.call, &def.scoring.count_only) {
+        if scores_all || callsign::matches_any(&q.call, &def.scoring.count_only) {
             r.points = p;
         }
         tally.points += r.points;

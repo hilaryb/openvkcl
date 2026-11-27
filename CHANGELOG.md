@@ -17,6 +17,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   **Moved…** on the entry line, and count multipliers again in each shire.
 - Contest definitions can name a `number_list` file of valid codes, which lets
   the number field take letters as well as digits.
+- **WIA Australia Day** contest: RS(T) or SNR plus a 4-character grid square,
+  each station once per band and mode (SSB/AM/FM as one mode, FT8/FT4 as one),
+  1 point per km between grid-square centres rounded to the nearest km, and 1
+  point in the same square. Stations outside Australia score only for VK, VJ,
+  VL, AX and VI contacts. Phone/CW and digital are scored as separate sections,
+  and the claimed score is their total. Cabrillo lists 4-character squares.
+- Contest definitions can exchange 4-character locators (`locator_chars`), give
+  distance-scored contacts a minimum score (`min_points`), limit `count_only`
+  to stations outside the home country (`count_only_home`), and split score
+  groups by mode as well as band.
 
 ### Changed
 

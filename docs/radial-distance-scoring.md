@@ -1,6 +1,6 @@
 # Radial distance scoring
 
-Five contests set `kind = "distance"` and score each contact from the distance between the two stations. They are the NZART VHF DX Weekend, VHF Field Day, Low Band Contest and Microwave Contest, and the WIA VHF-UHF Field Day. The measurement and the arithmetic live in [`src-tauri/src/geo.rs`](../src-tauri/src/geo.rs) and in `basic_points` / `points` in [`src-tauri/src/contest/engine.rs`](../src-tauri/src/contest/engine.rs). The brackets, factors and bonuses are set in the contest files under [`src-tauri/contests`](../src-tauri/contests).
+Six contests set `kind = "distance"` and score each contact from the distance between the two stations. They are the NZART VHF DX Weekend, VHF Field Day, Low Band Contest and Microwave Contest, and the WIA VHF-UHF Field Day and Australia Day Contest. The measurement and the arithmetic live in [`src-tauri/src/geo.rs`](../src-tauri/src/geo.rs) and in `basic_points` / `points` in [`src-tauri/src/contest/engine.rs`](../src-tauri/src/contest/engine.rs). The brackets, factors and bonuses are set in the contest files under [`src-tauri/contests`](../src-tauri/contests).
 
 The other contests use fixed points and never store a distance: NZART Jock White Memorial Field Day, NZART Memorial Contest, NZART Sangster Shield, WIA Remembrance Day, WIA Trans-Tasman Low-Band, WIA Harry Angel Memorial 80m Sprint, and WIA John Moyle Memorial Field Day.
 
@@ -8,9 +8,9 @@ The other contests use fixed points and never store a distance: NZART Jock White
 
 The distance is the great-circle distance between the centres of the two Maidenhead locators. `distance_km` uses the haversine formula with an Earth radius of 6371 km.
 
-Both locators must be at least 6 characters and valid. `is_valid` accepts 4, 6, 8 and 10 character Maidenhead locators, and a 4-character square fails the length check along with any ill-formed locator. In either case the contact scores 0 and no distance is stored. A short or invalid locator is a warning (`exchange_warning`); the contact still counts as worked. The warning reads "Received locator must be at least 6 characters", or the same for the station's own locator.
+Both locators must be at least `locator_chars` characters (6 unless the contest sets 4) and valid. `is_valid` accepts 4, 6, 8 and 10 character Maidenhead locators; where 6 are required, a 4-character square fails the length check along with any ill-formed locator. In either case the contact scores 0 and no distance is stored. A short or invalid locator is a warning (`exchange_warning`); the contact still counts as worked. The warning reads "Received locator must be at least 6 characters" (or 4), or the same for the station's own locator.
 
-A contact whose two locators share a centre is 0 km. On a points-per-kilometre band that is 0 points. On a table band, 0 km falls in the first bracket.
+A contact whose two locators share a centre is 0 km. On a points-per-kilometre band that is 0 points, unless the contest sets `min_points`, which is the fewest points a scored contact gets after the first rounding. On a table band, 0 km falls in the first bracket.
 
 Dupes and invalid contacts (a callsign, band or mode the contest does not accept) are dropped in `evaluate` before points are calculated, so they show no distance.
 
@@ -118,3 +118,11 @@ points = effective_km × 2.7
 ```
 
 That product is about 1890.4 and is stored on the contact as calculated. The claimed score ceilings only the sum for the whole log.
+
+## WIA Australia Day
+
+[`wia-ausday.toml`](../src-tauri/contests/wia-ausday.toml) is an HF contest that exchanges 4-character grid squares (`locator_chars = 4`) and measures between their centres (`max_locator_chars = 4`), so a 6-character locator someone logs is cut to its square. Every band scores 1 point per km, with no taper, no mode factor and no bonus. Each contact's kilometres are rounded to the nearest km (`round = "nearest"`), and two stations in the same square score 1 point (`min_points = 1`). With 4-character centres the next shortest distance is about 111 km, one square north or south, so the minimum only affects same-square contacts.
+
+Phone/CW and digital are two score groups split by mode, and the claimed score is their total. Stations whose call is not VK, VJ, VL, AX or VI score only for contacts with those prefixes (`count_only` and `count_only_home`); their other contacts count as worked, at 0 points.
+
+**Example.** The WIA's sample line works QG62 to QF56: centres (-27.5, 153) and (-33.5, 151), 694.09 km, so 694 points. QG62 to QG62 is 1 point and QG62 to QG63 is 111.

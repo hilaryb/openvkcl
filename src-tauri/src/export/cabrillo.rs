@@ -12,7 +12,12 @@ fn exch(def: &ContestDef, rst: &str, nr: &str, number: &str, locator: &str) -> S
             ExchField::Rst => format!("{rst:<3}"),
             ExchField::Serial => num(nr),
             ExchField::Number => num(number),
-            ExchField::Locator => format!("{:<6}", locator.to_ascii_uppercase()),
+            ExchField::Locator => {
+                let loc = locator.trim().to_ascii_uppercase();
+                // A contest that exchanges grid squares lists the square alone.
+                let loc = if def.locator_chars == 4 { loc.chars().take(4).collect() } else { loc };
+                format!("{loc:<width$}", width = def.locator_chars)
+            }
             ExchField::Text => format!("{:<6}", number),
         })
         .collect::<Vec<_>>()
@@ -183,6 +188,17 @@ mod tests {
             qso_line(rd, "VK3AAA", &sample("40m", Some(7_090.2))),
             "QSO:  7090 PH 2026-09-19 0105 VK3AAA        59  30   VK2XYZ        57  45"
         );
+        // Australia Day exchanges grid squares: both are cut to 4 characters, as in
+        // the WIA's sample line.
+        let aus = defs.iter().find(|d| d.id == "wia-ausday").unwrap();
+        let mut q = sample("10m", Some(28_005.0));
+        q.mode = "CW".into();
+        q.sent_rst = "599".into();
+        q.rcvd_rst = "599".into();
+        assert_eq!(
+            qso_line(aus, "VK3AAA", &q),
+            "QSO: 28005 CW 2026-09-19 0105 VK3AAA        599 QF22 VK2XYZ        599 QF56"
+        );
     }
 
     #[test]
@@ -330,7 +346,13 @@ mod tests {
         let (defs, errs) = load_all(None);
         assert!(errs.is_empty(), "{errs:?}");
         // Known exceptions: underscore / space are outside A–Z, 0–9, hyphen.
-        let exceptions = ["WIA_VHFUHF", "WIA-HARRY ANGEL", "WIA-TRANS TASMAN", "WIA-VK SHIRES"];
+        let exceptions = [
+            "WIA_VHFUHF",
+            "WIA-HARRY ANGEL",
+            "WIA-TRANS TASMAN",
+            "WIA-VK SHIRES",
+            "WIA-AUSTRALIA DAY",
+        ];
         let mut bad = Vec::new();
         for d in defs.iter().filter(|d| !d.general) {
             if !contest_name_ok(&d.cabrillo_name) && !exceptions.contains(&d.cabrillo_name.as_str())

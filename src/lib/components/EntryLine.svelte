@@ -223,7 +223,7 @@
   }
 
   function useGrid(grid: string) {
-    rcvdLoc = grid.toUpperCase().slice(0, 6);
+    rcvdLoc = grid.toUpperCase().slice(0, contest.locator_chars === 4 ? 4 : 6);
     locInput?.focus();
   }
 
@@ -370,7 +370,7 @@
       hasNr ? check?.sent_nr : "",
       hasExch ? setup.sent_number : "",
       hasText ? sentExch : "",
-      hasLoc ? setup.station.locator.toUpperCase() : "",
+      hasLoc ? setup.station.locator.toUpperCase().slice(0, contest.locator_chars === 4 ? 4 : undefined) : "",
     ]
       .filter(Boolean)
       .join(" "),

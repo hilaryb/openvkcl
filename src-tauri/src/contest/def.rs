@@ -26,6 +26,11 @@ pub struct ContestDef {
     #[serde(default)]
     pub mode_groups: BTreeMap<String, String>,
     pub exchange: Vec<ExchField>,
+    /// Characters of locator exchanged: 6 (a sub-square, the default) or 4 (a
+    /// grid square, as in the WIA Australia Day contest). With 4, a received
+    /// square is enough, and Cabrillo lists both stations' squares alone.
+    #[serde(default = "default_locator_chars")]
+    pub locator_chars: usize,
     /// Name of the `number` field, e.g. "Branch".
     #[serde(default = "default_number_label")]
     pub number_label: String,
@@ -76,6 +81,10 @@ pub struct ContestDef {
 
 fn default_number_label() -> String {
     "Nr".into()
+}
+
+fn default_locator_chars() -> usize {
+    6
 }
 
 /// A file of valid `number` codes in the user's contests folder, so it can be
@@ -207,6 +216,10 @@ pub struct Scoring {
     /// Prefixes whose contacts score points. Empty means all workable stations.
     #[serde(default)]
     pub count_only: Vec<String>,
+    /// Prefixes of home stations, for which `count_only` doesn't apply: they score
+    /// every contact. Empty means `count_only` applies to every log.
+    #[serde(default)]
+    pub count_only_home: Vec<String>,
     /// Rounding of each contact's basic distance score, and of its points after
     /// mode factors and bonuses.
     #[serde(default)]
@@ -294,6 +307,10 @@ pub enum Points {
         /// Measure between the centres of locators truncated to this many characters.
         #[serde(default)]
         max_locator_chars: Option<usize>,
+        /// The fewest points a scored contact gets, e.g. 1 for two stations in the
+        /// same grid square, which measure 0 km apart.
+        #[serde(default)]
+        min_points: f64,
     },
     /// Contacts are counted and not scored.
     None,
@@ -350,6 +367,9 @@ pub struct Multiplier {
 pub struct ScoreGroup {
     pub name: String,
     pub bands: Vec<String>,
+    /// Modes in this group, e.g. a separate digital section. Empty means all modes.
+    #[serde(default)]
+    pub modes: Vec<String>,
 }
 
 /// A Cabrillo CATEGORY-* header choice. An empty option means the header is omitted.
@@ -473,6 +493,9 @@ impl ContestDef {
         }
         NaiveTime::parse_from_str(&self.default_start_utc, "%H:%M")
             .map_err(|e| format!("{}: default_start_utc: {e}", self.id))?;
+        if self.locator_chars != 4 && self.locator_chars != 6 {
+            return Err(format!("{}: locator_chars must be 4 or 6", self.id));
+        }
         if self.rework.kind == ReworkKind::Interval && self.rework.minutes <= 0 {
             return Err(format!("{}: interval rework needs minutes", self.id));
         }

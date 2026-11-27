@@ -15,6 +15,7 @@ const BUILTIN: &[(&str, &str)] = &[
     ("wia-jmmfd.toml", include_str!("../../contests/wia-jmmfd.toml")),
     ("wia-vhfuhf.toml", include_str!("../../contests/wia-vhfuhf.toml")),
     ("wia-vkshires.toml", include_str!("../../contests/wia-vkshires.toml")),
+    ("wia-ausday.toml", include_str!("../../contests/wia-ausday.toml")),
     ("nzart-vhf-dx.toml", include_str!("../../contests/nzart-vhf-dx.toml")),
     ("nzart-vhf-lowband.toml", include_str!("../../contests/nzart-vhf-lowband.toml")),
     ("nzart-vhf-microwave.toml", include_str!("../../contests/nzart-vhf-microwave.toml")),
@@ -328,6 +329,88 @@ mod tests {
         let tapered = if km > 700.0 { 700.0 + (km - 700.0) / 100.0 } else { km };
         let expected = tapered * 2.7;
         assert!((e.results[1].points - expected).abs() < 1e-9);
+    }
+
+    fn ausday_qso(id: i64, t: DateTime<Utc>, call: &str, band: &str, mode: &str, theirs: &str) -> Qso {
+        let mut q = qso(id, t, call, band, mode);
+        q.sent_locator = "QG62lm".into();
+        q.rcvd_locator = theirs.into();
+        q
+    }
+
+    #[test]
+    fn australia_day_distance() {
+        let d = def("wia-ausday");
+        let start = Utc.with_ymd_and_hms(2027, 1, 25, 22, 0, 0).unwrap();
+        let s = setup("wia-ausday", start);
+        let m = |n| start + Duration::minutes(n);
+        let qsos = vec![
+            ausday_qso(1, m(1), "VK2ABC", "40m", "PH", "QF56"),   // 694.09 km
+            ausday_qso(2, m(2), "VK4XYZ", "40m", "PH", "QG62"),   // same square: 1
+            ausday_qso(3, m(3), "VK4DEF", "40m", "CW", "QG63"),   // one square north: 111.19
+            ausday_qso(4, m(4), "VK2GHI", "20m", "PH", "QF56od"), // cut to QF56
+            ausday_qso(5, m(5), "VK2JKL", "20m", "PH", ""),       // no grid: 0, warned
+        ];
+        let e = evaluate(&d, &s, &qsos);
+        let pts: Vec<f64> = e.results.iter().map(|r| r.points).collect();
+        assert_eq!(pts, vec![694.0, 1.0, 111.0, 694.0, 0.0]);
+        assert!(e.results[..4].iter().all(|r| r.warning.is_none()), "{:?}", e.results);
+        assert!(e.results[4].warning.as_deref().unwrap().contains("at least 4 characters"));
+        assert_eq!(e.score.total, 1500.0);
+    }
+
+    #[test]
+    fn australia_day_dupes_and_sections() {
+        let d = def("wia-ausday");
+        let start = Utc.with_ymd_and_hms(2027, 1, 25, 22, 0, 0).unwrap();
+        let s = setup("wia-ausday", start);
+        let m = |n| start + Duration::minutes(n);
+        let qsos = vec![
+            ausday_qso(1, m(1), "VK2ABC", "40m", "PH", "QF56"),
+            ausday_qso(2, m(200), "VK2ABC", "40m", "PH", "QF56"), // dupe, never again
+            ausday_qso(3, m(201), "VK2ABC", "40m", "CW", "QF56"), // another mode
+            ausday_qso(4, m(202), "VK2ABC", "20m", "PH", "QF56"), // another band
+            ausday_qso(5, m(203), "VK2ABC", "40m", "DG", "QF56"), // FT8
+            ausday_qso(6, m(204), "VK2ABC", "40m", "DG", "QF56"), // FT4 is the same mode
+            ausday_qso(7, m(205), "VK2ABC", "6m", "PH", "QF56"),  // not a contest band
+        ];
+        let e = evaluate(&d, &s, &qsos);
+        assert!(e.results[1].dupe && e.results[5].dupe);
+        assert!(!e.results[2].dupe && !e.results[3].dupe && !e.results[4].dupe);
+        assert!(e.results[6].invalid.is_some());
+        let names: Vec<&str> = e.score.groups.iter().map(|g| g.name.as_str()).collect();
+        assert_eq!(names, vec!["Phone/CW", "Digital"]);
+        let (phone, digi) = (&e.score.groups[0], &e.score.groups[1]);
+        assert_eq!((phone.qsos, phone.score), (3, 3.0 * 694.0));
+        assert_eq!((digi.qsos, digi.score), (1, 694.0));
+        // The claimed score is the total of both sections.
+        assert_eq!(e.score.total, 4.0 * 694.0);
+    }
+
+    #[test]
+    fn australia_day_dx_scores_only_vk() {
+        let d = def("wia-ausday");
+        let start = Utc.with_ymd_and_hms(2027, 1, 25, 22, 0, 0).unwrap();
+        let m = |n| start + Duration::minutes(n);
+        let qsos = vec![
+            ausday_qso(1, m(1), "VK2ABC", "20m", "PH", "QF56"),
+            ausday_qso(2, m(2), "AX3DEF", "20m", "PH", "QF22"),
+            ausday_qso(3, m(3), "VI9XYZ", "20m", "PH", "QF56"),
+            ausday_qso(4, m(4), "W1AW", "20m", "PH", "FN31"),
+            ausday_qso(5, m(5), "ZL2AAA", "20m", "PH", "RE78"),
+        ];
+        // A VK log scores everyone, DX included.
+        let vk = evaluate(&d, &setup("wia-ausday", start), &qsos);
+        assert!(vk.results.iter().all(|r| r.points > 0.0), "{:?}", vk.results);
+        // A DX log scores only VK, AX and the other Australian prefixes.
+        let mut dx = setup("wia-ausday", start);
+        dx.station.callsign = "JA1ABC".into();
+        let e = evaluate(&d, &dx, &qsos);
+        let scored: Vec<bool> = e.results.iter().map(|r| r.points > 0.0).collect();
+        assert_eq!(scored, vec![true, true, true, false, false]);
+        // DX contacts still count as worked, with no points.
+        assert!(e.results[3].invalid.is_none() && !e.results[3].dupe);
+        assert_eq!(e.score.qsos, 5);
     }
 
     fn nz_qso(id: i64, t: DateTime<Utc>, call: &str, band: &str, mode: &str, theirs: &str) -> Qso {

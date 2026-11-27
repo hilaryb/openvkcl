@@ -22,6 +22,9 @@ Changes are listed in [CHANGELOG](CHANGELOG.md).
   you can replace whenever the WIA publishes a new one (see
   [VK Shires](#vk-shires)), CQ zones from stations outside VK, and shires and
   zones counted as multipliers on each band and mode.
+- WIA Australia Day: 4-character grid squares, 1 point per km between them (see
+  [Australia Day](#australia-day)), and phone/CW and digital scored as separate
+  sections.
 - NZART HF contests: Jock White Memorial Field Day, Memorial Contest and
   Sangster Shield, with their one-hour (or half-hour) periods, separate serial
   numbers per band, and branch-number multipliers.
@@ -163,6 +166,27 @@ work from a new shire isn't a dupe). A contact less than 5 minutes after the las
 one from a different shire is flagged, as the rules require that gap. The rules
 also require at least two shires.
 
+### Australia Day
+
+Stations send RS(T), or the SNR on FT8/FT4, and their 4-character grid square
+(e.g. `59 QG62`, `-06 QG62`). Your own square is the first four characters of
+the locator in the setup; keep that at 6 characters, which a remote station
+needs for the Cabrillo GRID-LOCATOR. Each contact scores 1 point per km between
+the centres of the two squares, rounded to the nearest km, and 1 point if you
+are both in the same square. Each station counts once per band and mode; SSB,
+AM and FM are one mode, and FT8 and FT4 are one mode.
+
+Stations outside Australia score only for contacts with VK, VJ, VL, AX and VI
+calls; their other contacts are logged with no points. Phone and CW are scored
+apart from digital, and the side panel shows both sections; the claimed score
+is their total. FT8/FT4 contacts can be brought in from WSJT-X with **Import
+ADIF…**, which keeps their grids. A contact with no grid scores nothing until
+you add one: the QRZ.com grid button fills in the square.
+
+Send the Cabrillo log to [vklogchecker.com](https://vklogchecker.com) or
+axlogs@wia.org.au by 2359Z on the Saturday of the second weekend after the
+contest.
+
 ### Radio control
 
 OpenVKCL talks to the radio through one of:
@@ -199,7 +223,7 @@ submenu exists (KDE with `extra-xdg-menus`), otherwise under Internet.
 
 ## Contest definitions
 
-How the five distance-scored contests turn a locator pair into points is
+How the six distance-scored contests turn a locator pair into points is
 described in [Radial distance scoring](docs/radial-distance-scoring.md).
 A post-v1.0 sketch for several PCs sharing one log is in
 [Multi-station shared logging](docs/multi-station-logging.md).

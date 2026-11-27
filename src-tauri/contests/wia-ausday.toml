@@ -1,0 +1,91 @@
+# WIA Australia Day Contest
+# https://www.wia.org.au/members/contests/australiaday/
+#
+# 2200 UTC 25 January to 1000 UTC 26 January (12 hours). Cabrillo 3 logs to
+# vklogchecker.com or axlogs@wia.org.au by 2359Z on the Saturday of the second
+# weekend after the contest. Rules checked against the 2023+ rules PDF (distance
+# scoring and FT8/FT4).
+#
+# Stations send RS(T), or the SNR on FT8/FT4, and their 4-character grid square
+# (e.g. 59 QG62, -06 QG62). Each station once per band per mode; SSB, AM and FM
+# are one mode, and FT8 and FT4 are one mode (DG).
+#
+# Each contact scores 1 point per km between the centres of the two grid squares,
+# rounded to the nearest km, and 1 point within the same square. Stations outside
+# Australia score only for contacts with VK, VJ, VL, AX and VI. Phone and CW are
+# scored apart from digital; the claimed score is the total of both.
+id = "wia-ausday"
+name = "WIA Australia Day"
+cabrillo_name = "WIA-AUSTRALIA DAY"
+rules_url = "https://www.wia.org.au/members/contests/australiaday/"
+duration_minutes = 720
+default_start_utc = "22:00"
+bands = ["160m", "80m", "40m", "20m", "15m", "10m"]
+modes = ["PH", "CW", "DG"]
+exchange = ["rst", "locator"]
+locator_chars = 4
+
+[rework]
+kind = "never"
+per = ["band", "mode"]
+
+[scoring]
+formula = "sum_points"
+round = "nearest"
+count_only = ["VK", "VJ", "VL", "AX", "VI"]
+count_only_home = ["VK", "VJ", "VL", "AX", "VI"]
+
+[scoring.points]
+kind = "distance"
+max_locator_chars = 4
+min_points = 1
+band_factor = { "160m" = 1, "80m" = 1, "40m" = 1, "20m" = 1, "15m" = 1, "10m" = 1 }
+
+[[score_groups]]
+name = "Phone/CW"
+bands = ["160m", "80m", "40m", "20m", "15m", "10m"]
+modes = ["PH", "CW"]
+
+[[score_groups]]
+name = "Digital"
+bands = ["160m", "80m", "40m", "20m", "15m", "10m"]
+modes = ["DG"]
+
+[[categories]]
+key = "CATEGORY-OPERATOR"
+label = "Operator (multi-op: mixed mode only)"
+options = ["SINGLE-OP", "MULTI-OP"]
+default = "SINGLE-OP"
+
+[[categories]]
+key = "CATEGORY-TRANSMITTER"
+label = "Transmitters (multi-two: one phone, one CW or digital)"
+options = ["ONE", "TWO"]
+default = "ONE"
+
+[[categories]]
+key = "CATEGORY-MODE"
+label = "Mode (DIGI for an FT8/FT4-only log)"
+options = ["MIXED", "SSB", "CW", "DIGI"]
+default = "MIXED"
+
+[[categories]]
+key = "CATEGORY-BAND"
+label = "Band"
+options = ["ALL"]
+default = "ALL"
+
+[[categories]]
+key = "CATEGORY-POWER"
+options = ["HIGH", "LOW", "QRP"]
+default = "HIGH"
+
+[[categories]]
+key = "CATEGORY-STATION"
+options = ["FIXED", "PORTABLE"]
+default = "FIXED"
+
+[[categories]]
+key = "CATEGORY-ASSISTED"
+options = ["NON-ASSISTED", "ASSISTED"]
+default = "NON-ASSISTED"

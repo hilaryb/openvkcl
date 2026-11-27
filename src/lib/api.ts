@@ -26,6 +26,8 @@ export interface ContestDef {
   mode_groups: Record<string, string>;
   exchange: ExchField[];
   number_label: string;
+  /** Characters of locator exchanged: 6, or 4 for a grid square. */
+  locator_chars: number;
   number_from: string[];
   /** An official list of codes for the number field (e.g. VK Shires), read from the contests folder. */
   number_list: NumberList | null;
@@ -52,7 +54,7 @@ export interface ContestDef {
     per: string[];
     new_square_resets: boolean;
   };
-  score_groups: { name: string; bands: string[] }[];
+  score_groups: { name: string; bands: string[]; modes: string[] }[];
   categories: CategoryField[];
   /** Stations that move between areas (e.g. VK Shires rovers), chosen by a category. */
   rover: { category: string; value: string; move_minutes: number } | null;
